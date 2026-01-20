@@ -169,24 +169,52 @@ kernel void gaussian_blur_x(
 }
 
 // ========== ML OPERATIONS ==========
-// Softmax activation
+// Softmax activation (optimized with threadgroup reduction)
 kernel void softmax(
     device const float* input [[buffer(0)]],
     device float* output [[buffer(1)]],
     device const uint& n [[buffer(2)]],
-    uint id [[thread_position_in_grid]]
+    uint id [[thread_position_in_grid]],
+    uint lid [[thread_index_in_threadgroup]],
+    threadgroup float* shared [[threadgroup(0)]]
 ) {
-    float max_val = input[0];
-    for (uint i = 0; i < n; i++) {
-        max_val = max(max_val, input[i]);
+    // Parallel reduction for max (assuming threadgroup_size = 32, n <= 1024)
+    float local_max = -INFINITY;
+    for (uint i = lid; i < n; i += 32) {
+        local_max = max(local_max, input[i]);
     }
+    shared[lid] = local_max;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
 
-    float sum_exp = 0.0f;
-    for (uint i = 0; i < n; i++) {
-        sum_exp += exp(input[i] - max_val);
+    // Reduce max across threadgroup
+    for (uint stride = 16; stride > 0; stride >>= 1) {
+        if (lid < stride) {
+            shared[lid] = max(shared[lid], shared[lid + stride]);
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
     }
+    float max_val = shared[0];
 
-    output[id] = exp(input[id] - max_val) / sum_exp;
+    // Parallel computation of sum_exp
+    float local_sum = 0.0f;
+    for (uint i = lid; i < n; i += 32) {
+        local_sum += exp(input[i] - max_val);
+    }
+    shared[lid] = local_sum;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    // Reduce sum across threadgroup
+    for (uint stride = 16; stride > 0; stride >>= 1) {
+        if (lid < stride) {
+            shared[lid] += shared[lid + stride];
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
+    float sum_exp = shared[0];
+
+    if (id < n) {
+        output[id] = exp(input[id] - max_val) / sum_exp;
+    }
 }
 
 // Matrix multiply (simple, non-optimized)

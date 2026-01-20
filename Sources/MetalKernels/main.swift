@@ -240,7 +240,7 @@ class MetalCompute {
             fatalError("Could not create buffers")
         }
         
-        let _ = dispatch(kernelName: "softmax", buffers: [inputBuffer, outputBuffer, nBuffer], threadCount: count)
+        let _ = dispatch(kernelName: "softmax", buffers: [inputBuffer, outputBuffer, nBuffer], threadCount: count, threadgroupSize: 32, threadgroupMemory: [32 * MemoryLayout<Float>.size])
         
         let resultPtr = outputBuffer.contents().assumingMemoryBound(to: Float.self)
         return Array(UnsafeBufferPointer(start: resultPtr, count: count))

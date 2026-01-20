@@ -344,7 +344,7 @@ kernel void gelu(
     uint id [[thread_position_in_grid]]
 ) {
     float x = input[id];
-    float cdf = 0.5f * (1.0f + tanh(sqrt(2.0f / M_PI_F) * (x + 0.044715f * x * x * x)));
+    float cdf = 0.5f * (1.0f + tanh(sqrt(2.0f / 3.141592653589793f) * (x + 0.044715f * x * x * x)));
     output[id] = x * cdf;
 }
 

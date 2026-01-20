@@ -10,7 +10,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "MetalKernels",
-            dependencies: []
+            dependencies: [],
+            resources: [
+                .copy("kernels.metal")
+            ]
         )
     ]
 )

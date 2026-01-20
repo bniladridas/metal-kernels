@@ -248,19 +248,24 @@ class MetalCompute {
     
     // ML: Matrix Multiply
     func matrixMultiply(a: [Float], b: [Float], size: Int) -> [Float] {
-        let bufferSize = size * size * MemoryLayout<Float>.size
-        
-        guard let aBuffer = device.makeBuffer(bytes: a, length: bufferSize),
-              let bBuffer = device.makeBuffer(bytes: b, length: bufferSize),
-              let cBuffer = device.makeBuffer(length: bufferSize),
-              let kBuffer = device.makeBuffer(bytes: [UInt32(size)], length: MemoryLayout<UInt32>.size) else {
+        let m = size, k = size, n = size
+        let aSize = m * k * MemoryLayout<Float>.size
+        let bSize = k * n * MemoryLayout<Float>.size
+        let cSize = m * n * MemoryLayout<Float>.size
+
+        guard let aBuffer = device.makeBuffer(bytes: a, length: aSize),
+              let bBuffer = device.makeBuffer(bytes: b, length: bSize),
+              let cBuffer = device.makeBuffer(length: cSize),
+              let mBuffer = device.makeBuffer(bytes: [UInt32(m)], length: MemoryLayout<UInt32>.size),
+              let kBuffer = device.makeBuffer(bytes: [UInt32(k)], length: MemoryLayout<UInt32>.size),
+              let nBuffer = device.makeBuffer(bytes: [UInt32(n)], length: MemoryLayout<UInt32>.size) else {
             fatalError("Could not create buffers")
         }
-        
-        let _ = dispatch2D(kernelName: "matrix_multiply", buffers: [aBuffer, bBuffer, cBuffer, kBuffer], threadCount: (size, size), threadgroupSize: (8, 8))
-        
+
+        let _ = dispatch2D(kernelName: "matrix_multiply", buffers: [aBuffer, bBuffer, cBuffer, mBuffer, kBuffer, nBuffer], threadCount: (m, n), threadgroupSize: (8, 8))
+
         let resultPtr = cBuffer.contents().assumingMemoryBound(to: Float.self)
-        return Array(UnsafeBufferPointer(start: resultPtr, count: size * size))
+        return Array(UnsafeBufferPointer(start: resultPtr, count: m * n))
     }
     
     // CPU reference for matrix multiply

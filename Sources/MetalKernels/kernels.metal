@@ -217,22 +217,26 @@ kernel void softmax(
     }
 }
 
-// Matrix multiply (simple, non-optimized)
+// Matrix multiply (general dimensions)
 kernel void matrix_multiply(
     device const float* a [[buffer(0)]],
     device const float* b [[buffer(1)]],
     device float* c [[buffer(2)]],
-    device const uint& k [[buffer(3)]],
+    device const uint& m [[buffer(3)]],
+    device const uint& k [[buffer(4)]],
+    device const uint& n [[buffer(5)]],
     uint2 gid [[thread_position_in_grid]]
 ) {
     uint i = gid.x;
     uint j = gid.y;
 
+    if (i >= m || j >= n) return;
+
     float sum = 0.0f;
     for (uint p = 0; p < k; p++) {
-        sum += a[i * k + p] * b[p * k + j];
+        sum += a[i * k + p] * b[p * n + j];
     }
-    c[i * k + j] = sum;
+    c[i * n + j] = sum;
 }
 
 // ========== ADVANCED PATTERNS ==========

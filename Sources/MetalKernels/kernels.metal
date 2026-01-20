@@ -156,7 +156,7 @@ kernel void gaussian_blur_x(
     uint x = gid.x;
     uint y = gid.y;
 
-    if (x == 0 || x >= width - 1 || y >= height) return;
+    if (x < 2 || x >= width - 2 || y >= height) return;
 
     float kernel_vals[5] = {0.0625, 0.25, 0.375, 0.25, 0.0625};
     float sum = 0.0f;

@@ -421,7 +421,7 @@ kernel void depthwise_conv2d(
     }
 }
 
-// Layer normalization
+// Layer normalization (optimized with parallel reduction)
 kernel void layer_norm(
     device const float* input [[buffer(0)]],
     device float* output [[buffer(1)]],
@@ -432,23 +432,37 @@ kernel void layer_norm(
     uint lid [[thread_index_in_threadgroup]],
     threadgroup float* shared [[threadgroup(0)]]
 ) {
-    // Compute mean
+    // Load input to shared memory
     shared[lid] = input[id];
     threadgroup_barrier(mem_flags::mem_threadgroup);
-    
-    float mean = 0.0f;
-    for (uint i = 0; i < 32; i++) {
-        mean += shared[i];
-    }
-    mean /= 32.0f;
 
-    // Compute variance
-    float var = 0.0f;
-    for (uint i = 0; i < 32; i++) {
-        float diff = shared[i] - mean;
-        var += diff * diff;
+    // Compute local sum_x and sum_x2
+    float local_sum_x = shared[lid];
+    float local_sum_x2 = shared[lid] * shared[lid];
+
+    // Parallel reduction for sum_x
+    shared[lid] = local_sum_x;
+    for (uint stride = 16; stride > 0; stride >>= 1) {
+        if (lid < stride) {
+            shared[lid] += shared[lid + stride];
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
     }
-    var /= 32.0f;
+    float sum_x = shared[0];
+
+    // Parallel reduction for sum_x2
+    shared[lid] = local_sum_x2;
+    for (uint stride = 16; stride > 0; stride >>= 1) {
+        if (lid < stride) {
+            shared[lid] += shared[lid + stride];
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
+    float sum_x2 = shared[0];
+
+    // Compute mean and variance
+    float mean = sum_x / 32.0f;
+    float var = (sum_x2 - sum_x * sum_x / 32.0f) / 32.0f;
 
     float normalized = (input[id] - mean) / sqrt(var + 1e-5f);
     output[id] = gamma * normalized + beta;

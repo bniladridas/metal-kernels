@@ -9,17 +9,20 @@ Be respectful, inclusive, and constructive in all interactions.
 ## Getting Started
 
 1. **Fork the repository**
+
    ```bash
-   git clone https://github.com/yourusername/MetalKernels.git
-   cd MetalKernels
+   git clone https://github.com/bniladridas/metal-kernels.git
+   cd metal-kernels
    ```
 
 2. **Create a feature branch**
+
    ```bash
    git checkout -b feature/your-kernel-name
    ```
 
 3. **Build and test**
+
    ```bash
    swift build
    swift run MetalKernels
@@ -30,45 +33,47 @@ Be respectful, inclusive, and constructive in all interactions.
 ### 1. New Kernels
 
 Add new Metal compute kernels for:
-- RNN layers (LSTM, GRU)
-- Transformer attention
-- Quantization operations
-- Custom loss functions
-- Physics simulations
+
+* RNN layers (LSTM, GRU)
+* Transformer attention
+* Quantization operations
+* Custom loss functions
+* Physics simulations
 
 **Steps:**
-1. Add Metal kernel code to the metalCode string in `MetalCompute.init()`
+
+1. Add Metal kernel code to the `metalCode` string in `MetalCompute.init()`
 2. Add Swift host function in `MetalCompute` class
-3. Add test case in main.swift
-4. Document in README.md
+3. Add test case in `main.swift`
+4. Document in `README.md`
 
 ### 2. Performance Optimization
 
-- Profile existing kernels with Metal Debugger
-- Optimize memory access patterns
-- Reduce kernel launch overhead
-- Add threadgroup memory optimizations
-- Vectorize operations
+* Profile existing kernels with Metal Debugger
+* Optimize memory access patterns
+* Reduce kernel launch overhead
+* Add threadgroup memory optimizations
+* Vectorize operations
 
 ### 3. Documentation
 
-- Write kernel implementation guides
-- Create usage examples
-- Benchmark different chip generations
-- Document best practices
+* Write kernel implementation guides
+* Create usage examples
+* Benchmark different chip generations
+* Document best practices
 
 ### 4. Testing
 
-- Add comprehensive test suite
-- Benchmark against CPU and other GPU libraries
-- Test on multiple Mac/iPad models
-- Verify edge cases (NaN, infinity, zero)
+* Add comprehensive test suite
+* Benchmark against CPU and other GPU libraries
+* Test on multiple Mac/iPad models
+* Verify edge cases (NaN, infinity, zero)
 
 ### 5. Cross-platform Support
 
-- Vulkan compute backend for non-Apple devices
-- Metal on iOS, tvOS, macOS variants
-- Support for older Metal versions
+* Vulkan compute backend for non-Apple devices
+* Metal on iOS, tvOS, macOS variants
+* Support for older Metal versions
 
 ## Coding Style
 
@@ -120,14 +125,16 @@ Related issues: #123
 ```
 
 **Categories:**
-- `[Feature]` - New kernel or capability
-- `[Fix]` - Bug fix
-- `[Perf]` - Performance improvement
-- `[Docs]` - Documentation update
-- `[Test]` - Test additions
-- `[Refactor]` - Code reorganization
+
+* `[Feature]` - New kernel or capability
+* `[Fix]` - Bug fix
+* `[Perf]` - Performance improvement
+* `[Docs]` - Documentation update
+* `[Test]` - Test additions
+* `[Refactor]` - Code reorganization
 
 Example:
+
 ```
 [Feature] Add LSTM kernel for sequence processing
 
@@ -141,136 +148,67 @@ Related issues: #42
 ## Pull Request Process
 
 1. **Create PR with clear title and description**
-   ```
-   Title: Add LSTM kernel for RNN support
-   
-   Description:
-   - Implements LSTM with peephole connections
-   - Supports batch processing (up to 256)
-   - ~50x faster than NumPy on M1
-   - Tested on M1/M2/M3 and iPhone 15 Pro
-   - Includes comprehensive benchmarks
-   ```
 
 2. **Ensure code builds**
+
    ```bash
    swift build -v
    swift run MetalKernels
    ```
 
 3. **Add tests**
-   - Add test case to main.swift
-   - Include correctness check against CPU
-   - Benchmark GPU vs CPU
 
 4. **Update documentation**
-   - Add kernel to appropriate section in README.md
-   - Update performance table
-   - Include usage example
 
 5. **Wait for review**
-   - Address feedback promptly
-   - Make requested changes in new commits
-   - Don't force-push after review starts
 
 ## Performance Benchmarking
 
-When adding kernels, include:
-
-```swift
-print("📊 BENCHMARK: My Kernel")
-compute.benchmarkWithMetrics(name: "My Kernel (GPU)", iterations: 10) {
-    _ = compute.myKernel(input: testData)
-}
-
-let cpuStart = Date()
-for _ in 0..<10 {
-    _ = cpu_my_kernel(testData)
-}
-let cpuTime = Date().timeIntervalSince(cpuStart) / 10.0 * 1000
-print("⏱️  My Kernel (CPU): \(String(format: "%.3f", cpuTime)) ms/iter")
-```
-
-Expected results section:
-```
-Speedup on M1: ~50x
-Speedup on M2: ~50x
-Speedup on M3: ~60x
-Speedup on iPhone 15 Pro: ~40x
-GPU Utilization: ~85%
-```
+Include benchmarks comparing GPU and CPU performance.
 
 ## Debugging Tips
 
 ### Metal Shader Compilation Errors
 
-- Check syntax (Metal is strict about C++ rules)
-- Verify buffer indices are sequential
-- Ensure threadgroup memory is allocated
-- Look for reserved keyword conflicts
+* Check syntax
+* Verify buffer indices
+* Ensure threadgroup memory
+* Look for reserved keyword conflicts
 
 ### Runtime Issues
 
-- Check `MTLBuffer` sizes (multiply count × element size)
-- Verify buffer indices match kernel signature
-- Use `waitUntilCompleted()` for debugging
-- Print thread counts before dispatch
-
-### Performance Profiling
-
-```bash
-# Use Metal Debugger
-# 1. Run app in Xcode
-# 2. Xcode > Window > Devices and Simulators > Open Console
-# 3. Click Metal Debugger in Debug Navigator
-# 4. Capture frame and analyze
-```
+* Check `MTLBuffer` sizes
+* Verify buffer indices
+* Use `waitUntilCompleted()` for debugging
+* Print thread counts
 
 ## Testing on Multiple Devices
 
-Ideal test matrix:
-
-- [ ] M1 MacBook Air
-- [ ] M2 MacBook Pro
-- [ ] M3 MacBook Pro
-- [ ] M1/M2 iPad Pro
-- [ ] iPhone 15 Pro (A17)
-
-Or use:
-- Apple Silicon Cloud Computing (AWS Graviton for simulation)
-- BrowserStack for iOS testing
+* [ ] M1 MacBook Air
+* [ ] M2 MacBook Pro
+* [ ] M3 MacBook Pro
+* [ ] M1/M2 iPad Pro
+* [ ] iPhone 15 Pro (A17)
 
 ## Documentation Requirements
 
 Every kernel needs:
 
-1. **In-code comments**
-   ```swift
-   /// Matrix multiplication using tiled approach
-   /// - Parameters:
-   ///   - a: Left matrix (M×K)
-   ///   - b: Right matrix (K×N)
-   ///   - size: Dimension (assumes square matrices)
-   /// - Returns: Result matrix (M×N)
-   func tiledMatrixMultiply(a: [Float], b: [Float], size: Int) -> [Float]
-   ```
-
-2. **README.md entry** with category and example
-
-3. **Performance table** with GPU/CPU times
-
-4. **Use case description** explaining when to use
+1. In-code comments
+2. README.md entry with example
+3. Performance table
+4. Use case description
 
 ## Licensing
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+All contributions are under the MIT License.
 
 ## Questions?
 
-- **GitHub Issues**: For bugs and feature requests
-- **GitHub Discussions**: For questions and ideas
-- **Email**: your.email@example.com
+* GitHub Issues: for bugs and features
+* GitHub Discussions: for questions and ideas
+* Email: [harpertoken@icloud.com](mailto:harpertoken@icloud.com)
 
 ---
 
-Thank you for contributing! 🙏
+Thank you for contributing!

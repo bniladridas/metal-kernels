@@ -55,6 +55,7 @@ jobs:
           exit 0
 
       - name: Generate changelog and beta release
+        if: steps.pr.outputs.should_release == 'true'
         uses: googleapis/release-please-action@v4
         with:
           release-type: simple

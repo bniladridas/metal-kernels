@@ -212,9 +212,9 @@ kernel void softmax(
     if (tid == 0) shared_sum[0] = local_data[0];
     threadgroup_barrier(mem_flags::mem_device);
     
-    // Phase 3: Compute final softmax values
+    // Phase 3: Compute final softmax values (reuse exp_val to avoid recomputation)
     if (tid < n) {
-        output[tid] = exp(input[tid] - shared_max[0]) / shared_sum[0];
+        output[tid] = exp_val / shared_sum[0];
     }
 }
 

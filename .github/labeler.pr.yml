@@ -2,21 +2,14 @@
 # File-path based labels for pull requests only
 
 docs:
-  - "docs/**"
   - "README.md"
+  - "QUICK_REFERENCE.md"
+  - "LABELS.md"
+  - "CONTRIBUTING.md"
+  - "BETA.md"
 
-tests:
-  - "tests/**"
-  - "test/**"
-
-refactor:
-  - "src/**"
+source:
+  - "Sources/**"
 
 metal:
   - "**/*.metal"
-
-ios:
-  - "**/*.swift"
-
-macos:
-  - "macos/**"

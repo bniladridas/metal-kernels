@@ -18,8 +18,10 @@ class MetalCompute {
         }
         self.commandQueue = commandQueue
         
-        // Load Metal shader code from file
-        let url = URL(fileURLWithPath: "Sources/MetalKernels/kernels.metal")
+        // Load Metal shader code from bundle resource
+        guard let url = Bundle.module.url(forResource: "kernels", withExtension: "metal") else {
+            fatalError("Could not find kernels.metal in bundle. Make sure it's added as a resource in Package.swift.")
+        }
         let metalCode: String
         do {
             metalCode = try String(contentsOf: url)
@@ -238,7 +240,7 @@ class MetalCompute {
             fatalError("Could not create buffers")
         }
         
-        let _ = dispatch(kernelName: "softmax", buffers: [inputBuffer, outputBuffer, nBuffer], threadCount: count)
+        let _ = dispatch(kernelName: "softmax", buffers: [inputBuffer, outputBuffer, nBuffer], threadCount: count, threadgroupSize: 32, threadgroupMemory: [32 * MemoryLayout<Float>.size])
         
         let resultPtr = outputBuffer.contents().assumingMemoryBound(to: Float.self)
         return Array(UnsafeBufferPointer(start: resultPtr, count: count))

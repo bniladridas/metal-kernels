@@ -18,8 +18,10 @@ class MetalCompute {
         }
         self.commandQueue = commandQueue
         
-        // Load Metal shader code from file
-        let url = URL(fileURLWithPath: "Sources/MetalKernels/kernels.metal")
+        // Load Metal shader code from bundle resources
+        guard let url = Bundle.module.url(forResource: "kernels", withExtension: "metal") else {
+            fatalError("Could not find kernels.metal in bundle resources")
+        }
         let metalCode: String
         do {
             metalCode = try String(contentsOf: url)

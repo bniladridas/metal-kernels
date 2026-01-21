@@ -65,7 +65,7 @@ List changes as *atomic bullets*:
 * [ ] Manual testing
 * [ ] Not tested (explain why)
 
-## Details:
+**Details:**
 
 ---
 

@@ -156,7 +156,7 @@ kernel void gaussian_blur_x(
     uint x = gid.x;
     uint y = gid.y;
 
-    if (x == 0 || x >= width - 1 || y >= height) return;
+    if (x < 2 || x >= width - 2 || y >= height) return;
 
     float kernel_vals[5] = {0.0625, 0.25, 0.375, 0.25, 0.0625};
     float sum = 0.0f;
@@ -229,6 +229,8 @@ kernel void exclusive_scan(
     output[id] = shared[lid];
 }
 
+#define BLOCK_SIZE 32
+
 // Tiling pattern (2D block multiplication)
 kernel void tiled_matrix_multiply(
     device const float* a [[buffer(0)]],
@@ -240,26 +242,32 @@ kernel void tiled_matrix_multiply(
     threadgroup float* tileA [[threadgroup(0)]],
     threadgroup float* tileB [[threadgroup(1)]]
 ) {
-    uint i = gid.x;
-    uint j = gid.y;
-    uint ti = lid.x;
-    uint tj = lid.y;
+    uint blockRow = gid.x / BLOCK_SIZE;
+    uint blockCol = gid.y / BLOCK_SIZE;
+    uint row = blockRow * BLOCK_SIZE + lid.x;
+    uint col = blockCol * BLOCK_SIZE + lid.y;
+
+    if (row >= n || col >= n) return;
 
     float sum = 0.0f;
 
-    for (uint t = 0; t < n; t += 32) {
-        tileA[ti * 32 + tj] = a[i * n + t + tj];
-        tileB[ti * 32 + tj] = b[(t + ti) * n + j];
+    for (uint t = 0; t < n; t += BLOCK_SIZE) {
+        // Load tile from A into shared memory
+        tileA[lid.x * BLOCK_SIZE + lid.y] = a[row * n + t + lid.y];
+        // Load tile from B into shared memory
+        tileB[lid.x * BLOCK_SIZE + lid.y] = b[(t + lid.x) * n + col];
+
         threadgroup_barrier(mem_flags::mem_threadgroup);
 
-        for (uint k = 0; k < 32; k++) {
-            sum += tileA[ti * 32 + k] * tileB[k * 32 + tj];
+        // Compute partial sum using shared memory
+        for (uint k = 0; k < BLOCK_SIZE; k++) {
+            sum += tileA[lid.x * BLOCK_SIZE + k] * tileB[k * BLOCK_SIZE + lid.y];
         }
 
         threadgroup_barrier(mem_flags::mem_threadgroup);
     }
 
-    c[i * n + j] = sum;
+    c[row * n + col] = sum;
 }
 
 // ========== NEURAL NETWORK LAYERS ==========

@@ -18,8 +18,10 @@ class MetalCompute {
         }
         self.commandQueue = commandQueue
         
-        // Load Metal shader code from file
-        let url = URL(fileURLWithPath: "Sources/MetalKernels/kernels.metal")
+        // Load Metal shader code from bundle resources
+        guard let url = Bundle.module.url(forResource: "kernels", withExtension: "metal") else {
+            fatalError("Could not find kernels.metal in bundle resources")
+        }
         let metalCode: String
         do {
             metalCode = try String(contentsOf: url)
@@ -678,16 +680,16 @@ print("    Passed\n")
 
 // ============= SUMMARY =============
 print("╔════════════════════════════════════════════════════════════╗")
-print("║         All Advanced Features Executed Successfully       ║")
+print("║         All Advanced Features Executed Successfully        ║")
 print("║                                                            ║")
 print("║ What you now have:                                         ║")
-print("║  GPU Profiling & Metrics (utilization estimation)         ║")
-print("║  Threadgroup Tuning (32, 64, 128, 256)                    ║")
-print("║  Batch Operations (multiple items per thread)             ║")
-print("║  Neural Network Layers (sigmoid, tanh, GELU)              ║")
-print("║  Efficient Convolution (depthwise separable)              ║")
-print("║  Activation Functions for Transformers                    ║")
-print("║  Batched Matrix Operations                                ║")
+print("║  GPU Profiling & Metrics (utilization estimation)          ║")
+print("║  Threadgroup Tuning (32, 64, 128, 256)                     ║")
+print("║  Batch Operations (multiple items per thread)              ║")
+print("║  Neural Network Layers (sigmoid, tanh, GELU)               ║")
+print("║  Efficient Convolution (depthwise separable)               ║")
+print("║  Activation Functions for Transformers                     ║")
+print("║  Batched Matrix Operations                                 ║")
 print("║                                                            ║")
 print("║ Performance Summary:                                       ║")
 print("║ • GPU typically 10-90x faster than CPU                     ║")
@@ -696,5 +698,5 @@ print("║ • Batch operations reduce kernel call overhead             ║")
 print("║ • Use depthwise conv for mobile efficiency                 ║")
 print("║                                                            ║")
 print("║ Next: Deploy to iOS, add CoreML integration, or            ║")
-print("║ profile in Xcode's Metal Debugger for detailed analysis   ║")
+print("║ profile in Xcode's Metal Debugger for detailed analysis    ║")
 print("╚════════════════════════════════════════════════════════════╝")

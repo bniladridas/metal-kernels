@@ -93,6 +93,7 @@ kernel void fused_multiply_add(
 kernel void sum_reduction(
     device const float* input [[buffer(0)]],
     device float* output [[buffer(1)]],
+    constant uint& threadgroup_size [[buffer(2)]],
     uint id [[thread_position_in_grid]],
     uint lid [[thread_index_in_threadgroup]],
     threadgroup float* shared [[threadgroup(0)]]
@@ -102,7 +103,7 @@ kernel void sum_reduction(
     threadgroup_barrier(mem_flags::mem_threadgroup);
 
     // Parallel reduction within threadgroup
-    for (uint stride = 1; stride < 32; stride *= 2) {
+    for (uint stride = 1; stride < threadgroup_size; stride *= 2) {
         if (lid % (stride * 2) == 0) {
             shared[lid] += shared[lid + stride];
         }
@@ -111,7 +112,7 @@ kernel void sum_reduction(
 
     // Store result from first thread
     if (lid == 0) {
-        output[id / 32] = shared[0];
+        output[id / threadgroup_size] = shared[0];
     }
 }
 
@@ -173,20 +174,48 @@ kernel void gaussian_blur_x(
 kernel void softmax(
     device const float* input [[buffer(0)]],
     device float* output [[buffer(1)]],
-    device const uint& n [[buffer(2)]],
-    uint id [[thread_position_in_grid]]
+    device float* shared_max [[buffer(2)]],
+    device float* shared_sum [[buffer(3)]],
+    device const uint& n [[buffer(4)]],
+    threadgroup float* local_data [[threadgroup(0)]],
+    uint tid [[thread_position_in_threadgroup]],
+    uint bid [[threadgroup_position_in_grid]],
+    uint group_size [[threads_per_threadgroup]]
 ) {
-    float max_val = input[0];
-    for (uint i = 0; i < n; i++) {
-        max_val = max(max_val, input[i]);
+    // Phase 1: Find maximum using parallel reduction
+    float local_max = (tid < n) ? input[tid] : -INFINITY;
+    local_data[tid] = local_max;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    
+    for (uint stride = group_size / 2; stride > 0; stride >>= 1) {
+        if (tid < stride && tid + stride < n) {
+            local_data[tid] = max(local_data[tid], local_data[tid + stride]);
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
     }
-
-    float sum_exp = 0.0f;
-    for (uint i = 0; i < n; i++) {
-        sum_exp += exp(input[i] - max_val);
+    
+    if (tid == 0) shared_max[0] = local_data[0];
+    threadgroup_barrier(mem_flags::mem_device);
+    
+    // Phase 2: Compute exp and sum using parallel reduction
+    float exp_val = (tid < n) ? exp(input[tid] - shared_max[0]) : 0.0f;
+    local_data[tid] = exp_val;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    
+    for (uint stride = group_size / 2; stride > 0; stride >>= 1) {
+        if (tid < stride && tid + stride < n) {
+            local_data[tid] += local_data[tid + stride];
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
     }
-
-    output[id] = exp(input[id] - max_val) / sum_exp;
+    
+    if (tid == 0) shared_sum[0] = local_data[0];
+    threadgroup_barrier(mem_flags::mem_device);
+    
+    // Phase 3: Compute final softmax values
+    if (tid < n) {
+        output[tid] = exp(input[tid] - shared_max[0]) / shared_sum[0];
+    }
 }
 
 // Matrix multiply (simple, non-optimized)
@@ -212,6 +241,7 @@ kernel void matrix_multiply(
 kernel void exclusive_scan(
     device const float* input [[buffer(0)]],
     device float* output [[buffer(1)]],
+    constant uint& threadgroup_size [[buffer(2)]],
     uint id [[thread_position_in_grid]],
     uint lid [[thread_index_in_threadgroup]],
     threadgroup float* shared [[threadgroup(0)]]
@@ -219,7 +249,7 @@ kernel void exclusive_scan(
     shared[lid] = (lid > 0) ? input[id - 1] : 0.0f;
     threadgroup_barrier(mem_flags::mem_threadgroup);
 
-    for (uint stride = 1; stride < 32; stride *= 2) {
+    for (uint stride = 1; stride < threadgroup_size; stride *= 2) {
         float val = (lid >= stride) ? shared[lid - stride] : 0.0f;
         threadgroup_barrier(mem_flags::mem_threadgroup);
         shared[lid] += val;
@@ -253,9 +283,17 @@ kernel void tiled_matrix_multiply(
 
     for (uint t = 0; t < n; t += BLOCK_SIZE) {
         // Load tile from A into shared memory
-        tileA[lid.x * BLOCK_SIZE + lid.y] = a[row * n + t + lid.y];
+        if (row < n && (t + lid.y) < n) {
+            tileA[lid.x * BLOCK_SIZE + lid.y] = a[row * n + t + lid.y];
+        } else {
+            tileA[lid.x * BLOCK_SIZE + lid.y] = 0.0f;
+        }
         // Load tile from B into shared memory
-        tileB[lid.x * BLOCK_SIZE + lid.y] = b[(t + lid.x) * n + col];
+        if ((t + lid.x) < n && col < n) {
+            tileB[lid.x * BLOCK_SIZE + lid.y] = b[(t + lid.x) * n + col];
+        } else {
+            tileB[lid.x * BLOCK_SIZE + lid.y] = 0.0f;
+        }
 
         threadgroup_barrier(mem_flags::mem_threadgroup);
 
@@ -396,6 +434,7 @@ kernel void layer_norm(
     device const float& gamma [[buffer(2)]],
     device const float& beta [[buffer(3)]],
     device const uint& n [[buffer(4)]],
+    constant uint& threadgroup_size [[buffer(5)]],
     uint id [[thread_position_in_grid]],
     uint lid [[thread_index_in_threadgroup]],
     threadgroup float* shared [[threadgroup(0)]]
@@ -405,18 +444,18 @@ kernel void layer_norm(
     threadgroup_barrier(mem_flags::mem_threadgroup);
     
     float mean = 0.0f;
-    for (uint i = 0; i < 32; i++) {
+    for (uint i = 0; i < threadgroup_size; i++) {
         mean += shared[i];
     }
-    mean /= 32.0f;
+    mean /= float(threadgroup_size);
 
     // Compute variance
     float var = 0.0f;
-    for (uint i = 0; i < 32; i++) {
+    for (uint i = 0; i < threadgroup_size; i++) {
         float diff = shared[i] - mean;
         var += diff * diff;
     }
-    var /= 32.0f;
+    var /= float(threadgroup_size);
 
     float normalized = (input[id] - mean) / sqrt(var + 1e-5f);
     output[id] = gamma * normalized + beta;

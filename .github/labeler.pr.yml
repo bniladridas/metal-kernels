@@ -1,0 +1,22 @@
+---
+# File-path based labels for pull requests only
+
+docs:
+  - "docs/**"
+  - "README.md"
+
+tests:
+  - "tests/**"
+  - "test/**"
+
+refactor:
+  - "src/**"
+
+metal:
+  - "**/*.metal"
+
+ios:
+  - "**/*.swift"
+
+macos:
+  - "macos/**"

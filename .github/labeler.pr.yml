@@ -7,9 +7,13 @@ docs:
   - "LABELS.md"
   - "CONTRIBUTING.md"
   - "BETA.md"
+  - "readme.txt"
 
 source:
   - "Sources/**"
+
+swift:
+  - "**/*.swift"
 
 metal:
   - "**/*.metal"

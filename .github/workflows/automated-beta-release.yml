@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: read
+      pull-requests: write
 
     steps:
       - name: Checkout repository
@@ -55,16 +55,6 @@ jobs:
           exit 0
 
       - name: Generate changelog and beta release
-        uses: google-github-actions/release-please-action@v4
+        uses: googleapis/release-please-action@v4
         with:
           release-type: simple
-          prerelease: true
-          prerelease-type: beta
-          changelog-types: |
-            [
-              { "type": "feat", "section": "Features" },
-              { "type": "fix", "section": "Bug Fixes" },
-              { "type": "perf", "section": "Performance" },
-              { "type": "docs", "section": "Documentation" },
-              { "type": "refactor", "section": "Refactors" }
-            ]
